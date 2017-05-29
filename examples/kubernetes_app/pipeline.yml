@@ -1,0 +1,40 @@
+modules: !Imports
+    - buildbot-docker-build
+    - buildbot-kubernetes-deploy
+branches:
+    master:
+        stages: [ build, test, deploy ]
+        pr_stages: [ build, test ]
+stages:
+    build:
+        worker:
+            type: docker
+            image: workerbase
+        steps:
+            - !DockerBuild
+                dockerfile: Dockerfile
+                image_name: myapp
+
+            - !DockerUploadNexus
+                image_name: !i "myapp:%(prop:buildid)s"
+    test:
+        worker:
+            type: docker
+            image: workerbase
+        steps:
+            - !WithKubernetesInfra
+                specs: k8s_staging/*.yml
+                template_args:
+                    buildid: !i "%(prop:buildid)s"
+                steps:
+                    - k8s_staging/test_e2e.sh
+
+    deploy:
+        worker:
+            type: docker
+            image: workerbase
+        steps:
+            - !DeployKubernetes
+                specs: k8s_prod/*.yml
+                template_args:
+                    buildid: !i "%(prop:buildid)s"

@@ -1,0 +1,58 @@
+modules: !Imports
+    - buildbot-nexus
+    - buildbot-release_notes
+    - buildbot-fota_android
+
+branches:
+    master:
+        stages: [ ]
+        pr_stages: [ build, test ]
+        merge_stages: [ build ]
+
+crons:
+    daily:
+        timespec:
+            - "0 12 * * * *"
+        branches:
+            - master
+        stages: [ build, test, release_notes, fota ]
+
+stages:
+    build:
+        worker:
+            type: docker
+            image: workerandroid
+        matrix:
+            TARGET: [ target1, target2]
+            VARIANT: [ eng, userdebug, user ]
+        matrix_exclude:
+            - TARGET: target1
+              VARIANT: user
+        steps:
+            - |
+              # build android
+              . build/envsetup.sh
+              lunch $TARGET-$VARIANT
+              make dist
+            - !DiffManifest
+            - !UploadNexus
+                uploads:
+                    - !i "out/target/%(prop:TARGET)s/flashfile(.*).zip:%(prop:TARGET)s/\\2.zip"
+    test:
+        worker:
+            type: testfarm
+            image: !i workertestfarm-%(prop:test_campaign)s
+        matrix:
+            TARGET: [ target1, target2]
+            TEST_CAMPAIGN: [ stability ]
+        steps:
+            - !DownloadNexus
+                downloads:
+                    - !i "%(prop:TARGET)s/flashfile.*.zip:flashfile.zip"
+            - !RunAndroidTest
+                test_campaign: !i "%(prop:TEST_CAMPAIGN)s"
+
+    release_notes:
+        extends: AndroidReleaseNotes
+    fota:
+        extends: AndroidFota
