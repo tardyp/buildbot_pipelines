@@ -50,6 +50,25 @@ def test_yml_k8s(k8s_pipeline):
     assert yml.cfg != {}
 
 
+def test_yml_android_trigger_push(android_pipeline):
+    yml = PipelineYml(android_pipeline)
+    triggers = yml.generate_triggers("master")
+    assert triggers == []
+
+
+def test_yml_android_trigger_pr(android_pipeline):
+    yml = PipelineYml(android_pipeline)
+    triggers = yml.generate_triggers("master", "pr")
+    assert len(triggers) == 2
+    assert triggers[0]['stage'] == 'build'
+    assert triggers[1]['stage'] == 'test'
+    assert len(triggers[0]['buildrequests']) == 5
+    assert len(triggers[1]['buildrequests']) == 2
+    props = triggers[1]['buildrequests'][0].copy()
+    assert props['yaml_text'] == android_pipeline
+    del props['yaml_text']
+    assert props == {'TARGET': 'target1', 'TEST_CAMPAIGN': 'stability', 'stage_name': 'test'}
+
 
 def test_yml_matrix_one_var():
     res = PipelineYml.compute_matrix({'a': [1, 2]}, [], [])

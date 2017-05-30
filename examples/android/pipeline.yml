@@ -5,9 +5,9 @@ modules: !Imports
 
 branches:
     master:
-        stages: [ ]
-        pr_stages: [ build, test ]
-        merge_stages: [ build ]
+        push: [ ]
+        pr: [ build, test ]
+    merge_candidates/master/.*: [ build ]
 
 crons:
     daily:

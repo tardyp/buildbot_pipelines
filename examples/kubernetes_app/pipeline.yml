@@ -4,8 +4,8 @@ modules: !Imports
 
 branches:
     master:
-        stages: [ build, test, deploy ]
-        pr_stages: [ build, test ]
+        push: [ build, test, deploy ]
+        pr: [ build, test ]
 stages:
     build:
         worker:

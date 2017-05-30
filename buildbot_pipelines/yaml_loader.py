@@ -112,20 +112,20 @@ class PipelineYml(object):
                 return stages
         return []
 
-    def generate_triggers(self, branch):
+    def generate_triggers(self, branch, event_category="push"):
         stages = self.find_stages_for_branch(branch)
+        if isinstance(stages, dict):
+            stages = stages.get(event_category, [])
         ret = []
         for stage_name in stages:
             stage = self.cfg.get('stages', {}).get(stage_name, {})
-
             matrix = self.compute_matrix(
-                stage.get('matrix', {}), stage.get('matrix_exclude', {}),
-                stage.get('matrix_include', {}))
-
+                stage.get('matrix', {}), stage.get('matrix_include', {}),
+                stage.get('matrix_exclude', {}))
             buildrequests_properties = []
             for props in matrix:
                 buildrequests_properties.append(props)
                 props['stage_name'] = stage_name
                 props['yaml_text'] = self.yaml_text
-            ret.append(buildrequests_properties)
+            ret.append({'stage': stage_name, 'buildrequests': buildrequests_properties})
         return ret
