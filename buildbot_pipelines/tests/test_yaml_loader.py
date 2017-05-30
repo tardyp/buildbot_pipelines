@@ -39,12 +39,47 @@ def k8s_pipeline(monkeypatch):
 
 
 def test_yml_android(android_pipeline):
-    res = PipelineYml(android_pipeline)
-    assert res.cfg != {}
-    assert res.cfg['stages']['build']['steps'][1] == "!DiffManifest()"
-    assert res.cfg['stages']['build']['steps'][2] == "!UploadNexus(uploads=[Interpolate(u'out/target/%(prop:TARGET)s/flashfile(.*).zip:%(prop:TARGET)s/\\\\2.zip')])"
+    yml = PipelineYml(android_pipeline)
+    assert yml.cfg != {}
+    assert yml.cfg['stages']['build']['steps'][1] == "!DiffManifest()"
+    assert yml.cfg['stages']['build']['steps'][2] == "!UploadNexus(uploads=[Interpolate(u'out/target/%(prop:TARGET)s/flashfile(.*).zip:%(prop:TARGET)s/\\\\2.zip')])"
 
 
 def test_yml_k8s(k8s_pipeline):
-    res = PipelineYml(k8s_pipeline)
-    assert res.cfg != {}
+    yml = PipelineYml(k8s_pipeline)
+    assert yml.cfg != {}
+
+
+
+def test_yml_matrix_one_var():
+    res = PipelineYml.compute_matrix({'a': [1, 2]}, [], [])
+    assert res == [{'a': 1}, {'a': 2}]
+
+
+def test_yml_matrix_two_vars():
+    res = PipelineYml.compute_matrix({'a': [1, 2], 'b': [3, 4]}, [], [])
+    assert sorted(res) == sorted([{'a': 1, 'b': 3}, {'a': 2, 'b': 3}, {'a': 1, 'b': 4}, {'a': 2, 'b': 4}])
+
+
+def test_yml_matrix_exclude():
+    res = PipelineYml.compute_matrix({'a': [1, 2], 'b': [3, 4]}, [], [{'b': 4, 'a': 2}])
+    assert sorted(res) == sorted([{'a': 1, 'b': 3}, {'a': 2, 'b': 3}, {'a': 1, 'b': 4}])
+
+
+def test_yml_matrix_exclude_subset():
+    res = PipelineYml.compute_matrix({'a': [1, 2], 'b': [3, 4]}, [], [{'b': 4}])
+    assert sorted(res) == sorted([{'a': 1, 'b': 3}, {'a': 2, 'b': 3}])
+
+
+def test_yml_matrix_include_dupe():
+    res = PipelineYml.compute_matrix({'a': [1, 2], 'b': [3, 4]}, [{'b': 4, 'a': 2}])
+    assert sorted(res) == sorted([{'a': 1, 'b': 3}, {'a': 2, 'b': 3}, {'a': 1, 'b': 4}, {'a': 2, 'b': 4}])
+
+
+def test_yml_matrix_include_new():
+    res = PipelineYml.compute_matrix({'a': [1, 2], 'b': [3, 4]}, [{'b': 4, 'a': 3}])
+    assert sorted(res) == sorted([
+        {'a': 1, 'b': 3}, {'a': 2, 'b': 3}, {'a': 1, 'b': 4},
+        {'a': 2, 'b': 4},
+        {'a': 3, 'b': 4}
+        ])

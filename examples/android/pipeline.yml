@@ -19,6 +19,7 @@ crons:
 
 stages:
     build:
+        extends: GitSourceCheckout
         worker:
             type: docker
             image: workerandroid
@@ -45,6 +46,7 @@ stages:
         matrix:
             TARGET: [ target1, target2]
             TEST_CAMPAIGN: [ stability ]
+        source_checkout: false
         steps:
             - !DownloadNexus
                 downloads:
