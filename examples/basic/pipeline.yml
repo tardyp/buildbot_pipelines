@@ -1,0 +1,5 @@
+# simple stuff kept simple. one stage, one step. same pipeline for pr and push
+stages:
+    tox:
+        steps:
+            - tox

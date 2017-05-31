@@ -2,7 +2,8 @@ modules: !Imports
     - buildbot-nexus
     - buildbot-release_notes
     - buildbot-fota_android
-
+env:
+    CI: true
 branches:
     master:
         push: [ ]
@@ -20,6 +21,8 @@ crons:
 stages:
     build:
         extends: GitSourceCheckout
+        env:
+            build: 'android'
         worker:
             type: docker
             image: workerandroid
@@ -42,7 +45,7 @@ stages:
     test:
         worker:
             type: testfarm
-            image: !i workertestfarm-%(prop:test_campaign)s
+            image: !i workertestfarm-%(prop:TEST_CAMPAIGN)s
         matrix:
             TARGET: [ target1, target2]
             TEST_CAMPAIGN: [ stability ]

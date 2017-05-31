@@ -3,7 +3,7 @@ import os
 import pytest
 
 from buildbot_pipelines import package_loader
-from buildbot_pipelines.yaml_loader import PipelineYml
+from buildbot_pipelines.yaml_loader import PipelineYml, YmlProperties
 
 
 def load_example(*path):
@@ -20,6 +20,11 @@ def makeObject(typ):
             args = ["{}={}".format(k, repr(v)) for k, v in kwargs.items()]
         return "{}({})".format(typ, ", ".join(args))
     return constructor
+
+
+@pytest.fixture
+def basic_pipeline(monkeypatch):
+    return load_example('basic', 'pipeline.yml')
 
 
 @pytest.fixture
@@ -52,22 +57,57 @@ def test_yml_k8s(k8s_pipeline):
 
 def test_yml_android_trigger_push(android_pipeline):
     yml = PipelineYml(android_pipeline)
-    triggers = yml.generate_triggers("master")
+    triggers = yml.generate_triggers("codebase", "master")
     assert triggers == []
 
 
 def test_yml_android_trigger_pr(android_pipeline):
     yml = PipelineYml(android_pipeline)
-    triggers = yml.generate_triggers("master", "pr")
+    triggers = yml.generate_triggers("codebase", "master", "pr")
     assert len(triggers) == 2
     assert triggers[0]['stage'] == 'build'
     assert triggers[1]['stage'] == 'test'
     assert len(triggers[0]['buildrequests']) == 5
     assert len(triggers[1]['buildrequests']) == 2
-    props = triggers[1]['buildrequests'][0].copy()
-    assert props['yaml_text'] == android_pipeline
+    props = triggers[1]['buildrequests'][0].asDict()
+    assert props['yaml_text'][0] == android_pipeline
     del props['yaml_text']
-    assert props == {'TARGET': 'target1', 'TEST_CAMPAIGN': 'stability', 'stage_name': 'test'}
+    assert props == {
+        'worker_type': ('testfarm', 'yml_worker'),
+        'worker_image': ('workertestfarm-stability', 'yml_worker'),
+        'worker': ({'image': 'workertestfarm-stability', 'type': 'testfarm'}, 'yml_worker'),
+        'stage_name': ('test', 'yml_stage'),
+        'TARGET': ('target1', 'yml_matrix'),
+        'CI': (True, 'yml_global'),
+        'TEST_CAMPAIGN': ('stability', 'yml_matrix'),
+        'virtual_builder_name': ('codebase test TARGET:target1 TEST_CAMPAIGN:stability', 'yml_stage'),
+        'virtual_builder_tags': (['codebase', 'test', 'TARGET:target1', 'TEST_CAMPAIGN:stability'], 'yml_stage')}
+
+
+def test_yml_basic_trigger(basic_pipeline):
+    yml = PipelineYml(basic_pipeline)
+    triggers = yml.generate_triggers("codebase", "master", "pr")
+    assert len(triggers) == 1
+    print(triggers)
+    props = triggers[0]['buildrequests'][0].asDict()
+    assert props['yaml_text'][0] == basic_pipeline
+    del props['yaml_text']
+    assert props == {
+        u'stage_name': ('tox', u'yml_stage'),
+        u'virtual_builder_name': ('codebase tox', u'yml_stage'),
+        u'virtual_builder_tags': (['codebase', 'tox'], u'yml_stage')}
+
+
+def test_yml_android_get_steps(android_pipeline):
+    yml = PipelineYml(android_pipeline)
+    steps = yml.generate_step_list("build")
+    assert len(steps) == 3
+
+
+def test_yml_basic_get_steps(basic_pipeline):
+    yml = PipelineYml(basic_pipeline)
+    steps = yml.generate_step_list("tox")
+    assert len(steps) == 1
 
 
 def test_yml_matrix_one_var():
@@ -102,3 +142,11 @@ def test_yml_matrix_include_new():
         {'a': 2, 'b': 4},
         {'a': 3, 'b': 4}
         ])
+
+
+def test_yml_properties_from_source():
+    p = YmlProperties()
+    p.setProperty('a', 1, 'A')
+    p.setProperty('b', 2, 'B')
+    assert p.getPropertiesForSource('B') == {'b': 2}
+    assert p.getPropertiesForSource('A') == {'a': 1}

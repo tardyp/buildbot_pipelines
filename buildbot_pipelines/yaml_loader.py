@@ -1,8 +1,10 @@
 import re
 
 import yaml
+
 from buildbot.plugins import util
 from buildbot.plugins.db import get_plugins
+from buildbot.process.properties import Properties
 
 from . import package_loader
 
@@ -59,6 +61,28 @@ PipeLineYamlLoader.add_constructor("!Imports", PipeLineYamlLoader.construct_impo
 PipeLineYamlLoader.add_constructor(u'!Interpolate', PipeLineYamlLoader.construct_interpolate)
 PipeLineYamlLoader.add_constructor(u'!i', PipeLineYamlLoader.construct_interpolate)
 
+class PipelineYmlInvalid(Exception):
+    pass
+
+class YmlProperties(Properties):
+    def setProperty(self, name, value, source, runtime=False):
+        value = self.render(value)
+        if not value.called:
+            raise RuntimeError("Builbot pipeline does not support async renderables for now")
+        value = value.result
+        Properties.setProperty(self, name, value, source, runtime)
+
+    def getPropertiesForSource(self, source):
+        return dict(
+            (k, v) for k, (v, s) in self.properties.items() if s == source)
+
+    def computeVirtualBuilder(self, codebase):
+        matrix_props = [codebase, self.properties['stage_name'][0]] + sorted([k + ":" + v for k, v in self.getPropertiesForSource('yml_matrix').items()])
+        if 'virtual_builder_name' not in self.properties:
+            self.setProperty('virtual_builder_name', " ".join(matrix_props), "yml_stage")
+        if 'virtual_builder_tags' not in self.properties:
+            self.setProperty('virtual_builder_tags', matrix_props, "yml_stage")
+
 
 class PipelineYml(object):
     def __init__(self, yaml_text):
@@ -69,6 +93,8 @@ class PipelineYml(object):
 
     @staticmethod
     def compute_matrix(matrix, matrix_include=None, matrix_exclude=None):
+        if not matrix and not matrix_include:
+            return [{}]  # if matrix is not used, we run this stage within on build without particular property
         matrix_list = []
         for k, vs in matrix.items():
             if matrix_list:
@@ -107,12 +133,14 @@ class PipelineYml(object):
         return matrix_list
 
     def find_stages_for_branch(self, branch):
+        if 'branches' not in self.cfg:
+            return list(self.cfg.get('stages', {}).keys())
         for branch_re, stages in self.cfg.get('branches', {}).items():
             if re.match(branch_re, branch):
                 return stages
         return []
 
-    def generate_triggers(self, branch, event_category="push"):
+    def generate_triggers(self, codebase, branch, event_category="push"):
         stages = self.find_stages_for_branch(branch)
         if isinstance(stages, dict):
             stages = stages.get(event_category, [])
@@ -124,8 +152,22 @@ class PipelineYml(object):
                 stage.get('matrix_exclude', {}))
             buildrequests_properties = []
             for props in matrix:
-                buildrequests_properties.append(props)
-                props['stage_name'] = stage_name
-                props['yaml_text'] = self.yaml_text
+                properties = YmlProperties()
+                properties.update(props, 'yml_matrix')
+                properties.update(stage.get('env', {}), 'yml_stage')
+                properties.update(self.cfg.get('env', {}), 'yml_global')
+                properties.setProperty('yaml_text', self.yaml_text, 'yml_text')
+                properties.setProperty('stage_name', stage_name, 'yml_stage')
+                worker = stage.get('worker', {})
+                worker_type = worker.get('type')
+                if worker_type is not None:
+                    properties.setProperty('worker_type', worker_type, 'yml_worker')
+                    properties.setProperty('worker_image', worker.get("image"), 'yml_worker')
+                    properties.setProperty('worker', worker, 'yml_worker')
+                properties.computeVirtualBuilder(codebase)
+                buildrequests_properties.append(properties)
             ret.append({'stage': stage_name, 'buildrequests': buildrequests_properties})
         return ret
+
+    def generate_step_list(self, stage):
+        return self.cfg.get('stages', {}).get(stage, {}).get("steps", [])
