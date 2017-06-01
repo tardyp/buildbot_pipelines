@@ -36,6 +36,7 @@ class MultiplePropertyTrigger(Trigger):
     def createTriggerProperties(self, properties):
         return properties
 
+
 class SpawnerStep(BuildStep, CompositeStepMixin):
     def __init__(self, **kwargs):
         if "name" not in kwargs:

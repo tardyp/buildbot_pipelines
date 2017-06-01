@@ -24,6 +24,7 @@ stages:
             - echo ok
 """
 
+
 class TravisMaster(RunMasterBase):
     timeout = 300
 
@@ -48,13 +49,14 @@ class TravisMaster(RunMasterBase):
                       comments="good stuff",
                       revision="HEAD",
                       category="push",
-#                      codebase="basic_pipeline",
+                      codebase="basic_pipeline",
                       repository=self.repo_url,
                       project="basic_pipeline"
                       )
         build = yield self.doForceBuild(wantSteps=True, useChange=change, wantLogs=True)
         self.assertEqual(build['results'], SUCCESS)
-#        yield defer.Deferred()
+        yield defer.Deferred()
+
 
 def masterConfig():
     from buildbot_pipelines import PipelineConfigurator

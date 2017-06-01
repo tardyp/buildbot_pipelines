@@ -5,9 +5,10 @@ from buildbot.configurators import ConfiguratorBase
 from buildbot.interfaces import ILatentWorker
 from buildbot.process import factory
 from buildbot.process.properties import Property
-from buildbot.schedulers.basic import AnyBranchScheduler
 from buildbot.schedulers.triggerable import Triggerable
 from buildbot.steps.source.git import Git
+from buildbot_pipelines.schedulers.anycodebasescheduler import \
+    AnyCodeBaseScheduler
 from buildbot_pipelines.steps.runner import RunnerStep
 from buildbot_pipelines.steps.spawner import SpawnerStep
 
@@ -48,8 +49,8 @@ class PipelineConfigurator(ConfiguratorBase):
 
         # minimalistic config to activate new web UI
         c.setdefault('www', dict(port=PORT,
-                        #plugins=dict(
-                        #console_view=True, waterfall_view=True),
+                        plugins=dict(
+                        console_view=True, waterfall_view=True),
                       ))
         c.setdefault('protocols', {'pb': {'port': 9989}})
         c.setdefault('builders', [])
@@ -57,7 +58,7 @@ class PipelineConfigurator(ConfiguratorBase):
 
         # Define the builder for the main job
         f = factory.BuildFactory()
-        f.addStep(Git(repourl=Property("repository")))
+        f.addStep(Git(repourl=Property("repository"), codebase=Property("codebase"), name='git'))
         f.addStep(SpawnerStep())
 
         self.config['builders'].append(BuilderConfig(
@@ -66,7 +67,7 @@ class PipelineConfigurator(ConfiguratorBase):
             collapseRequests=False,
             factory=f
         ))
-        self.config['schedulers'].append(AnyBranchScheduler(
+        self.config['schedulers'].append(AnyCodeBaseScheduler(
             name='__spawner',
             builderNames=['__spawner']
         ))
