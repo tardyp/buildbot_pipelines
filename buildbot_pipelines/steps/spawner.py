@@ -22,7 +22,7 @@ class MultiplePropertyTrigger(Trigger):
 
     def __init__(self, schedulers_and_properties, **kwargs):
         self.schedulers_and_properties = schedulers_and_properties
-        Trigger.__init__(self, schedulerNames=["dummy"], updateSourceStamp=True, waitForFinish=True, **kwargs)
+        Trigger.__init__(self, schedulerNames=["dummy"], updateSourceStamp=False, waitForFinish=True, **kwargs)
 
     def getResultSummary(self):
         return {u'step': "stage " + self.name + " done"}

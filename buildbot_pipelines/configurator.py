@@ -58,7 +58,7 @@ class PipelineConfigurator(ConfiguratorBase):
 
         # Define the builder for the main job
         f = factory.BuildFactory()
-        f.addStep(Git(repourl=Property("repository"), codebase=Property("codebase"), name='git'))
+        f.addStep(Git(repourl=Property("repository"), codebase=Property("codebase"), name='git', shallow=1))
         f.addStep(SpawnerStep())
 
         self.config['builders'].append(BuilderConfig(
@@ -84,5 +84,6 @@ class PipelineConfigurator(ConfiguratorBase):
         ))
         self.config['schedulers'].append(Triggerable(
             name='__runner',
-            builderNames=['__runner']
+            builderNames=['__runner'],
+            codebases={},
         ))

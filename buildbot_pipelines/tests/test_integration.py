@@ -55,7 +55,6 @@ class TravisMaster(RunMasterBase):
                       )
         build = yield self.doForceBuild(wantSteps=True, useChange=change, wantLogs=True)
         self.assertEqual(build['results'], SUCCESS)
-        yield defer.Deferred()
 
 
 def masterConfig():

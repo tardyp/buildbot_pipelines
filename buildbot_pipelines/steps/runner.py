@@ -5,8 +5,25 @@ import traceback
 from twisted.internet import defer
 
 from buildbot.process.buildstep import SUCCESS, BuildStep
-from buildbot.steps.shell import ShellCommand
+from buildbot.steps import shell
 from buildbot_pipelines.yaml_loader import PipelineYml
+
+
+class ShellCommand(shell.ShellCommand):
+
+    flunkOnFailure = True
+    haltOnFailure = True
+    warnOnWarnings = True
+
+    def setupEnvironment(self, cmd):
+        """ Turn all build properties into environment variables """
+        shell.ShellCommand.setupEnvironment(self, cmd)
+        env = {}
+        for k, v in self.build.getProperties().properties.items():
+            env[str(k)] = str(v[0])
+        if cmd.args['env'] is None:
+            cmd.args['env'] = {}
+        cmd.args['env'].update(env)
 
 
 class RunnerStep(BuildStep):
@@ -44,6 +61,7 @@ class RunnerStep(BuildStep):
 
         if isinstance(command, BuildStep):
             step = command
+            name = step.name
 
         if name is None:
             name = self.truncateName(command)

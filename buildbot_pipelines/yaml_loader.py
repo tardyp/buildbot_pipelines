@@ -1,3 +1,4 @@
+import collections
 import re
 
 import yaml
@@ -20,7 +21,7 @@ class PipeLineYamlLoader(yaml.SafeLoader):
             k = node.tag[1:]
             if k in steps.names:
                 v = steps.get(k)
-                self.add_constructor(k, lambda node: self.construct_custom_object(v, node))
+                self.add_constructor(node.tag, lambda loader, node: self.construct_custom_object(v, node))
             else:
                 raise AttributeError("No buildbot plugin found for name: {}".format(k))
         return yaml.SafeLoader.construct_object(self, node, deep)
@@ -56,10 +57,15 @@ class PipeLineYamlLoader(yaml.SafeLoader):
         value = self.construct_scalar(node)
         return util.Interpolate(value)
 
+    def dict_constructor(self, node):
+        return collections.OrderedDict(self.construct_pairs(node))
 
+
+PipeLineYamlLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, PipeLineYamlLoader.dict_constructor)
 PipeLineYamlLoader.add_constructor("!Imports", PipeLineYamlLoader.construct_import)
 PipeLineYamlLoader.add_constructor(u'!Interpolate', PipeLineYamlLoader.construct_interpolate)
 PipeLineYamlLoader.add_constructor(u'!i', PipeLineYamlLoader.construct_interpolate)
+
 
 class PipelineYmlInvalid(Exception):
     pass
@@ -77,7 +83,7 @@ class YmlProperties(Properties):
             (k, v) for k, (v, s) in self.properties.items() if s == source)
 
     def computeVirtualBuilder(self, codebase):
-        matrix_props = [codebase, self.properties['stage_name'][0]] + sorted([k + ":" + v for k, v in self.getPropertiesForSource('yml_matrix').items()])
+        matrix_props = [codebase, self.properties['stage_name'][0]] + sorted([k + ":" + str(v) for k, v in self.getPropertiesForSource('yml_matrix').items()])
         if 'virtual_builder_name' not in self.properties:
             self.setProperty('virtual_builder_name', " ".join(matrix_props), "yml_stage")
         if 'virtual_builder_tags' not in self.properties:

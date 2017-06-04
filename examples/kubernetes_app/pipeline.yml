@@ -23,6 +23,9 @@ stages:
             type: docker
             image: workerbase
         steps:
+            - !Git
+                 repourl: !i "%(prop:repository)s"
+                 codebase: !i "%(prop:codebase)s"
             - !WithKubernetesInfra
                 specs: k8s_staging/*.yml
                 template_args:
