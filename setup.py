@@ -6,6 +6,7 @@ setup(
     name='buildbot_pipelines',
     description="Pipelines DSL for Buildbot",
     long_description=open("README.rst").read(),
+    version="0.1.0",
     keywords="buildbot pipeline ci",
     url="http://github.com/buildbot/buildbot_pipelines",
     author="Buildbot community",

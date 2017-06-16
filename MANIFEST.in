@@ -1,2 +1,0 @@
-include buildbot_travis/VERSION
-recursive-include buildbot_travis/static *
