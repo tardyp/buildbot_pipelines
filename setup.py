@@ -16,7 +16,7 @@ setup(
     zip_safe=False,
     install_requires=[
         'setuptools',
-        'buildbot>=0.9.6',  # for virtual builders features
+        'buildbot>=0.9.8',  # for virtual builders features and renderable codebase
         'buildbot-www',
         'buildbot-console-view',
         'buildbot-worker',
