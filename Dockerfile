@@ -4,6 +4,7 @@
 FROM buildbot/buildbot-master:master
 
 RUN \
+    apk add --no-cache openssh && \
     pip install buildbot_pipelines && \
     rm -r /root/.cache
 
