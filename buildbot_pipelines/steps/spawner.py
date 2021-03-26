@@ -65,7 +65,7 @@ class SpawnerStep(BuildStep, CompositeStepMixin):
             self.descriptionDone = u"unable to fetch .pipeline.yml"
             self.addCompleteLog(
                 "error",
-                "Please put a file named .pipeline.yml at the root of your repository:\n{0}".format(e))
+                "Please put a file named .pipeline.yml at the root of your repository:\n")
             self.addHelpLog()
             raise
 
